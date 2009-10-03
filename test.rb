@@ -9,10 +9,11 @@ Time.zone_default = 'UTC'
 Time.zone = 'UTC'
 ActiveRecord::Base.time_zone_aware_attributes = true
 ActiveRecord::Base.default_timezone = :utc
+ActiveRecord::Base.logger = Logger.new STDOUT
 
-# ActiveRecord::Base.establish_connection :adapter => "sqlite3", :database  => "test.sqlite3"
-ActiveRecord::Base.establish_connection(:adapter => "postgresql", :database => "proper_time_zones_test", :username => "carl",
-                                        :password => '')
+ActiveRecord::Base.establish_connection :adapter => "sqlite3", :database  => "test.sqlite3"
+# ActiveRecord::Base.establish_connection(:adapter => "postgresql", :database => "proper_time_zones_test", :username => "carl",
+#                                         :password => '')
 
 class CreateEvents < ActiveRecord::Migration
   def self.up
@@ -30,13 +31,16 @@ end
 
 class Event < ActiveRecord::Base; end
 
-CreateEvents.down rescue puts("Can't drop table because database doesn't exist.")
+CreateEvents.down
 CreateEvents.up
 
 describe "time zones messing up" do
   before do
     Time.zone = "Sydney"
     @event = Event.create! :scheduled_at => DateTime.now, :scheduled_on => Date.today
+  end
+  after do
+    Event.destroy_all
   end
   describe "find by date field" do
     it "should find an event on today" do
@@ -46,9 +50,14 @@ describe "time zones messing up" do
     end
   end
   describe "find by the time field" do
-    it "should find an event with time on a date" do
+    it "should find an event with time on a date with a parsed time" do
+      # today = Time.zone.parse Date.today.strftime('%Y-%m-%d') # Doesn't work.
       today = Date.parse Date.today.strftime('%Y-%m-%d')
-      Event.find(:first, :conditions => ["date(scheduled_at) = ?", today]).should.equal @event
+      Event.find(:first, :conditions => ["date(scheduled_at) = date(?)", today]).should.equal @event
+    end
+    it "should find an event with time on a date with today" do
+      today = Date.today
+      Event.find(:first, :conditions => ["date(scheduled_at) = date(?)", today]).should.equal @event
     end
   end
 end
