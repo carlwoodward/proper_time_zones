@@ -31,7 +31,7 @@ end
 
 class Event < ActiveRecord::Base; end
 
-CreateEvents.down
+CreateEvents.down rescue puts("Down failed because db doesn't exist")
 CreateEvents.up
 
 describe "time zones messing up" do
